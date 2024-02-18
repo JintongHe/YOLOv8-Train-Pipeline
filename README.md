@@ -1,0 +1,4 @@
+# train_pipeline
+ultralytics文件夹下放置有数据预处理、模型训练以及预测的脚本代码
+
+在example目录下有两个用yolov8做的项目实例供参考

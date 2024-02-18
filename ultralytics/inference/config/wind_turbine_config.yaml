@@ -1,0 +1,11 @@
+model_path: '../../wind_turbine/wind_turbine/weights/best.pt'
+out_file_path: "D:/Code/gitcode/yolov8/data/Solar_Panel/Test_Image/out"
+split_arr: [[700, 700], [900, 900], [1100, 1100]]
+device: 0
+imgsz: 640
+conf_thres: 0.4
+overlap_percent: 0.2
+polygon_threshold: 3 # 定义绘制多边形框的复杂度。值越高越简单
+out_flag: False
+show_flag: True
+class_dict: {0: 'WindTurbineBlade'}
