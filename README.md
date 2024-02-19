@@ -1,4 +1,6 @@
-# train_pipeline
+# YOLOv8-Train-Pipeline
+使用YOLOv8对大尺寸卫星影像进行目标检测以及实例分割。提供从数据准备、模型训练到预测的脚本
+
 ultralytics文件夹下放置有数据预处理、模型训练以及预测的脚本代码
 
-在example目录下有两个用yolov8做的项目实例供参考
+在example目录下有两个用YOLOv8做的项目实例供参考
