@@ -1,10 +1,37 @@
 import os
 import numpy as np
-from osgeo import gdal
+import gdal
 import cv2
 from multiprocessing import Pool
 from shapely.geometry import box, Polygon, MultiPolygon
+import argparse
+import ast
+import math
 
+def pixel_2_meter(img_path):
+    # Open the raster file using GDAL
+    ds = gdal.Open(img_path)
+
+    # Get raster size (width and height)
+    width = ds.RasterXSize
+    height = ds.RasterYSize
+
+    # Get georeferencing information
+    geoTransform = ds.GetGeoTransform()
+    pixel_size_x = geoTransform[1]  # Pixel width
+    pixel_size_y = abs(geoTransform[5])  # Pixel height (absolute value)
+
+    # Get the top latitude from the geotransform and the height
+    # geoTransform[3] is the top left y, which gives the latitude
+    latitude = geoTransform[3] - pixel_size_y * height
+    # Close the dataset
+    ds = None
+
+    # Convert road width from meters to pixels
+    # road_width_meters = line_width
+    meters_per_degree = 111139 * math.cos(math.radians(latitude))
+    thickness_pixels_ratio = 1 / (pixel_size_x * meters_per_degree)
+    return thickness_pixels_ratio
 
 def resize_image_aspect_ratio(img, new_size=640):
     # img = cv2.imread(image_path)
@@ -27,6 +54,8 @@ def resize_image_aspect_ratio(img, new_size=640):
 def process_image_segment_noedge(filename, IMAGE_FOLDER, split_size, training_image_folder_path,
                                  training_label_folder_path, LABEL_FOLDER, num_bands):
     image_path = os.path.join(IMAGE_FOLDER, filename)
+    ratio = pixel_2_meter(image_path)
+    split_size = [int(i * ratio) for i in split_size]  # meters to pixels
     image = gdal.Open(image_path)
     basename = os.path.splitext(filename)[0]
     label_path = os.path.join(LABEL_FOLDER, basename + '.txt')
@@ -88,6 +117,8 @@ def process_image_segment_noedge(filename, IMAGE_FOLDER, split_size, training_im
 def process_image_segment_withedge(filename, IMAGE_FOLDER, split_size, training_image_folder_path,
                                    training_label_folder_path, LABEL_FOLDER, num_bands, threshold):
     image_path = os.path.join(IMAGE_FOLDER, filename)
+    ratio = pixel_2_meter(image_path)
+    split_size = [int(i * ratio) for i in split_size]  # meters to pixels
     image = gdal.Open(image_path)
     basename = os.path.splitext(filename)[0]
     label_path = os.path.join(LABEL_FOLDER, basename + '.txt')
@@ -168,7 +199,7 @@ def process_image_segment_withedge(filename, IMAGE_FOLDER, split_size, training_
                                 cv2.imwrite(training_image_file_name, pic)
 
 
-def split_images_segment_v2(IMAGE_FOLDER, split_sizes, LABEL_FOLDER, with_edge=True):
+def split_images_segment_v2(IMAGE_FOLDER, split_sizes, LABEL_FOLDER, with_edge=False):
     training_image_folder_path = os.path.join(os.path.dirname(IMAGE_FOLDER), 'images')
     training_label_folder_path = os.path.join(os.path.dirname(IMAGE_FOLDER), 'labels')
     os.makedirs(training_image_folder_path, exist_ok=True)
@@ -197,16 +228,23 @@ def split_images_segment_v2(IMAGE_FOLDER, split_sizes, LABEL_FOLDER, with_edge=T
             pool.starmap(process_image_segment_noedge, args)
     print('Image segmentation completed!')
 
-def main():
-    # 指定切割大小（像素点）
-    split_sizes = [[300, 300], [500, 500], [700, 700], [900, 900], [1100, 1100]]
-    # 图片文件夹路径
-    images_folder_path = "D:/Code/Datasets/wind_turbine/dataset20240103/wind_turbine_blade/val/val_img"
-    # 标注文件夹路径
-    labels_folder_path = "D:/Code/Datasets/wind_turbine/dataset20240103/wind_turbine_blade/val/val_label"
-    # 切割图片（有重叠切）（with_edge: 图片边缘部分标注是否保留）
+
+def main(images_folder_path, labels_folder_path, split_sizes):
     split_images_segment_v2(images_folder_path, split_sizes, labels_folder_path, with_edge=False)
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('--split_sizes', type=str, help='List of split sizes')
+    parser.add_argument('--images_folder_path', type=str, help='Path to images folder')
+    parser.add_argument('--labels_folder_path', type=str, help='Path to labels folder')
+
+    args = parser.parse_args()
+
+    # Assuming split_sizes is a list of lists like [[300, 300], [500, 500]]
+    split_sizes = ast.literal_eval(args.split_sizes)
+
+    main(args.images_folder_path, args.labels_folder_path, split_sizes)
+
+
+
